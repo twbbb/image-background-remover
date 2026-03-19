@@ -134,8 +134,8 @@ async function cosUpload(
     600
   );
 
-  // Convert Buffer to Uint8Array for Cloudflare Workers compatibility
-  const body = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+  // Convert Buffer to ArrayBuffer for Cloudflare Workers fetch compatibility
+  const body = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
 
   const resp = await fetch(url, {
     method: "PUT",
