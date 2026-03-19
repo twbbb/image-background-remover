@@ -4,7 +4,3 @@ compatibility_flags = ["nodejs_compat"]
 
 # @opennextjs/cloudflare - Pages 构建输出目录
 pages_build_output_dir = ".open-next/assets"
-
-# Worker 入口
-main = ".open-next/worker.js"
-assets = { directory = ".open-next/assets", binding = "ASSETS" }
