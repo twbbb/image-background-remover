@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { removeBackgroundCI, type MattingMode } from "@/lib/tencent-cos";
 
-export const runtime = "edge";
-
 interface RemoveBgRequest {
   image: string; // base64 or data URL
   mode?: MattingMode; // portrait, goods, general
