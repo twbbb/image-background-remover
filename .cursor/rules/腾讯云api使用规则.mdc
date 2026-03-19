@@ -1,0 +1,122 @@
+---
+description: 腾讯云 API 集成使用规则，适用于人像分割/抠图功能的开发与维护
+globs: src/lib/tencent-cloud.ts, src/app/api/**/*.ts, .env.local, .env.example
+alwaysApply: false
+---
+
+# 腾讯云 API 使用规则
+
+## 1. 产品信息
+
+- **产品**: 人体分析 - 人像分割 (SegmentPortraitPic)
+- **请求域名**: `bda.tencentcloudapi.com`
+- **API 版本**: `2020-03-24`
+- **签名方式**: TC3-HMAC-SHA256 (V3 签名)
+
+## 2. 密钥管理
+
+### 环境变量配置
+```bash
+TENCENT_SECRET_ID=xxx      # 腾讯云 SecretId
+TENCENT_SECRET_KEY=xxx     # 腾讯云 SecretKey
+TENCENT_REGION=ap-guangzhou # 地域（默认广州）
+```
+
+### 安全要求
+- ❌ **严禁**将 SecretId/SecretKey 硬编码在代码中
+- ❌ **严禁**将 `.env.local` 提交到 Git 仓库
+- ✅ 密钥只能通过环境变量 (`process.env`) 读取
+- ✅ API 调用只在后端 API Route 中进行，前端不能直接调用腾讯云
+- ✅ `.env.local` 已在 `.gitignore` 中
+
+### 获取密钥
+1. 打开 https://console.cloud.tencent.com/cam/capi
+2. 新建或查看已有密钥
+3. 复制 SecretId 和 SecretKey 到 `.env.local`
+
+## 3. 服务开通
+
+### 开通步骤
+1. 登录腾讯云控制台
+2. 打开 [人体分析控制台](https://console.cloud.tencent.com/bda/portrait)
+3. 点击"立即开通"
+4. 同意服务协议
+
+### 计费规则
+| 项目 | 详情 |
+|------|------|
+| 免费额度 | 每月 1,000 次 |
+| 后付费 | ¥0.002/次 |
+| 资源包 | 1万次 ¥18、10万次 ¥190 |
+
+## 4. API 接口规范
+
+### 请求参数
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| Image | 否* | Base64 图片数据（与 Url 二选一） |
+| Url | 否* | 图片 URL 地址（与 Image 二选一） |
+| RspImgType | 否 | 返回类型：`base64` 或 `url` |
+| Scene | 否 | 场景：`GEN`(通用) 或 `GS`(绿幕) |
+
+### 限制条件
+- 图片 Base64 编码后 ≤ **5MB**
+- 图片分辨率 ≤ **2000×2000**
+- 支持格式：PNG、JPG、JPEG、BMP
+- **不支持** GIF 格式
+
+### 返回参数
+| 参数 | 说明 |
+|------|------|
+| ResultImage | Base64 编码的透明背景 PNG |
+| HasForeground | 是否检测到前景人像 |
+| RequestId | 请求唯一 ID（用于排查问题） |
+
+## 5. 错误处理
+
+### 常见错误码
+| 错误码 | 含义 | 处理方式 |
+|--------|------|----------|
+| AuthFailure | 认证失败 | 检查 SecretId/SecretKey |
+| UnauthorizedOperation | 未开通服务 | 前往控制台开通 |
+| ResourceUnavailable.InArrears | 账户欠费 | 充值 |
+| FailedOperation.ImageSizeExceed | 图片过大 | 压缩到 5MB 以下 |
+| FailedOperation.ImageResolutionExceed | 分辨率超限 | 缩小到 2000x2000 以下 |
+| FailedOperation.ImageDecodeFailed | 图片解码失败 | 检查图片格式 |
+
+### 错误处理策略
+- 对于 `InArrears` 返回 503 给前端
+- 对于 `ImageSizeExceed` / `ImageResolutionExceed` 返回 400 提示用户缩小图片
+- 对于其他错误返回 500，并在服务端记录详细错误日志
+
+## 6. 代码架构
+
+```
+src/
+├── lib/
+│   ├── tencent-cloud.ts      # 腾讯云 API V3 签名 + 调用封装
+│   └── background-removal.ts  # 前端调用层（调用后端 API Route）
+├── app/
+│   └── api/
+│       └── remove-bg/
+│           └── route.ts       # Next.js API Route（后端代理）
+scripts/
+└── test-remove-bg.mjs         # 独立测试脚本
+```
+
+## 7. 测试
+
+```bash
+# 使用测试脚本（自动下载测试图片）
+node scripts/test-remove-bg.mjs
+
+# 指定图片测试
+node scripts/test-remove-bg.mjs /path/to/image.jpg
+```
+
+## 8. 注意事项
+
+- 所有腾讯云 API 调用必须经过后端 API Route，**不能在前端直接调用**
+- 生产环境建议使用腾讯云子账号密钥（最小权限原则）
+- 监控 API 调用量，避免超出免费额度产生意外费用
+- 建议对 API 调用添加频率限制（rate limiting）
