@@ -1,19 +1,16 @@
 import type { MetadataRoute } from "next";
-
-export const dynamic = "force-static";
+import { SITE_URL } from "@/lib/constants";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://bgremover.app";
-
   return [
     {
-      url: baseUrl,
+      url: SITE_URL,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 1,
     },
     {
-      url: `${baseUrl}/editor`,
+      url: `${SITE_URL}/editor`,
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.9,

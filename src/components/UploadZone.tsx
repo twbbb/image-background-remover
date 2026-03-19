@@ -2,14 +2,12 @@
 
 import React, { useCallback, useState, useRef } from "react";
 import { Upload, ImageIcon, Loader2 } from "lucide-react";
+import { ACCEPTED_IMAGE_TYPES, MAX_FILE_SIZE } from "@/lib/constants";
 
 interface UploadZoneProps {
   onFileSelected: (file: File) => void;
   isProcessing?: boolean;
 }
-
-const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/bmp"];
-const MAX_SIZE = 20 * 1024 * 1024; // 20MB
 
 export default function UploadZone({
   onFileSelected,
@@ -21,11 +19,11 @@ export default function UploadZone({
 
   const validateFile = useCallback((file: File): boolean => {
     setError(null);
-    if (!ACCEPTED_TYPES.includes(file.type)) {
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
       setError("Please upload a PNG, JPG, WebP, or BMP image.");
       return false;
     }
-    if (file.size > MAX_SIZE) {
+    if (file.size > MAX_FILE_SIZE) {
       setError("Image must be smaller than 20MB.");
       return false;
     }
@@ -86,7 +84,7 @@ export default function UploadZone({
         <input
           ref={inputRef}
           type="file"
-          accept={ACCEPTED_TYPES.join(",")}
+          accept={ACCEPTED_IMAGE_TYPES.join(",")}
           onChange={handleInputChange}
           className="hidden"
           disabled={isProcessing}

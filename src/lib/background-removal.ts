@@ -1,17 +1,7 @@
-"use client";
+import type { RemovalResult, RemovalProgress, MattingMode } from "./types";
 
-export interface RemovalResult {
-  blob: Blob;
-  url: string;
-  width: number;
-  height: number;
-}
-
-export interface RemovalProgress {
-  phase: "loading" | "processing" | "done";
-  progress: number; // 0-1
-  message: string;
-}
+// Re-export types for backward compatibility
+export type { RemovalResult, RemovalProgress, MattingMode };
 
 // API base URL - Go backend
 // In production, use relative path (Nginx proxies /api/* to Go backend)
@@ -43,10 +33,25 @@ function base64ToBlob(base64: string, mimeType = "image/png"): Blob {
   return new Blob([byteArray], { type: mimeType });
 }
 
-export type MattingMode = "portrait" | "goods" | "general";
+/**
+ * Get dimensions of an image blob
+ */
+function getImageDimensions(
+  blob: Blob
+): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(blob);
+  });
+}
 
 /**
- * Remove background from an image file using Go backend API
+ * Remove background from an image file using Next.js API Route
  */
 export async function removeImageBackground(
   imageFile: File | Blob,
@@ -69,7 +74,7 @@ export async function removeImageBackground(
     message: "Sending to AI server...",
   });
 
-  const response = await fetch(`${API_BASE}/api/remove-bg`, {
+  const response = await fetch("/api/remove-bg", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -121,23 +126,6 @@ export async function removeImageBackground(
 }
 
 /**
- * Get dimensions of an image blob
- */
-function getImageDimensions(
-  blob: Blob
-): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      resolve({ width: img.naturalWidth, height: img.naturalHeight });
-      URL.revokeObjectURL(img.src);
-    };
-    img.onerror = reject;
-    img.src = URL.createObjectURL(blob);
-  });
-}
-
-/**
  * Get image file info
  */
 export function getFileInfo(file: File) {
@@ -178,10 +166,8 @@ export function applyBackground(
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      // Fill background color
       ctx.fillStyle = backgroundColor;
       ctx.fillRect(0, 0, width, height);
-      // Draw the transparent image on top
       ctx.drawImage(img, 0, 0, width, height);
       canvas.toBlob(
         (blob) => {
@@ -219,13 +205,11 @@ export function applyBackgroundImage(
     const bgImg = new Image();
     bgImg.crossOrigin = "anonymous";
     bgImg.onload = () => {
-      // Draw background image (cover mode)
       const scale = Math.max(width / bgImg.width, height / bgImg.height);
       const bgW = bgImg.width * scale;
       const bgH = bgImg.height * scale;
       ctx.drawImage(bgImg, (width - bgW) / 2, (height - bgH) / 2, bgW, bgH);
 
-      // Draw foreground
       const fgImg = new Image();
       fgImg.crossOrigin = "anonymous";
       fgImg.onload = () => {

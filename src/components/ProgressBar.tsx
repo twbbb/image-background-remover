@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { RemovalProgress } from "@/lib/background-removal";
+import type { RemovalProgress } from "@/lib/types";
 import { Wifi, Cpu } from "lucide-react";
 
 interface ProgressBarProps {
