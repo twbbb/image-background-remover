@@ -2,6 +2,8 @@ import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  // Cloudflare Workers 等非标准环境需要设置 trustHost
+  trustHost: true,
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,

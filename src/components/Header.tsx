@@ -1,12 +1,25 @@
 "use client";
 
-import React from "react";
-import { Sparkles, LogIn, LogOut } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Sparkles, LogIn, LogOut, User, CreditCard, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useSession, signIn, signOut } from "next-auth/react";
 
 export default function Header() {
   const { data: session, status } = useSession();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // 点击外部关闭菜单
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <header className="glass sticky top-0 z-50 border-b border-border">
@@ -34,6 +47,12 @@ export default function Header() {
             Editor
           </Link>
           <Link
+            href="/pricing"
+            className="text-sm font-medium text-muted hover:text-foreground transition-colors"
+          >
+            Pricing
+          </Link>
+          <Link
             href="#features"
             className="text-sm font-medium text-muted hover:text-foreground transition-colors"
           >
@@ -49,30 +68,69 @@ export default function Header() {
 
         <div className="flex items-center gap-3">
           {status === "loading" ? (
-            // 加载状态占位
             <div className="h-9 w-20 animate-pulse rounded-full bg-surface" />
           ) : session ? (
-            // 已登录：显示头像和登出按钮
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                {session.user?.image && (
+            // 已登录：头像 + 下拉菜单
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="flex items-center gap-2 rounded-full border border-border px-2 py-1.5 transition-all hover:bg-secondary"
+              >
+                {session.user?.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={session.user.image}
                     alt={session.user.name || "User"}
-                    className="h-8 w-8 rounded-full border-2 border-primary/30"
+                    className="h-7 w-7 rounded-full"
                   />
+                ) : (
+                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-xs font-bold">
+                    {session.user?.name?.charAt(0) || "U"}
+                  </div>
                 )}
-                <span className="hidden text-sm font-medium text-foreground sm:inline">
+                <span className="hidden text-sm font-medium text-foreground sm:inline max-w-[100px] truncate">
                   {session.user?.name}
                 </span>
-              </div>
-              <button
-                onClick={() => signOut()}
-                className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm font-medium text-muted transition-all hover:border-red-300 hover:text-red-500 hover:bg-red-50/50"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">退出</span>
+                <ChevronDown className={`h-4 w-4 text-muted transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
               </button>
+
+              {/* 下拉菜单 */}
+              {menuOpen && (
+                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-border bg-card shadow-lg py-1 z-50 fade-in">
+                  <div className="px-3 py-2 border-b border-border">
+                    <p className="text-sm font-medium truncate">{session.user?.name}</p>
+                    <p className="text-xs text-muted truncate">{session.user?.email}</p>
+                  </div>
+                  <Link
+                    href="/profile"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
+                  >
+                    <User className="h-4 w-4" />
+                    My Account
+                  </Link>
+                  <Link
+                    href="/pricing"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Pricing
+                  </Link>
+                  <div className="border-t border-border">
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        signOut();
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50/50 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             // 未登录：显示登录按钮

@@ -7,3 +7,8 @@ compatibility_flags = ["nodejs_compat"]
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"
+
+# KV Namespace for user data (需要在 Cloudflare Dashboard 创建后填入 id)
+# [[kv_namespaces]]
+# binding = "USER_KV"
+# id = "your-kv-namespace-id"

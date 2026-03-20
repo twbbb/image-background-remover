@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Header from "@/components/Header";
 import UploadZone from "@/components/UploadZone";
 import ComparisonSlider from "@/components/ComparisonSlider";
@@ -14,17 +15,19 @@ import {
   applyBackground,
   downloadBlob,
 } from "@/lib/background-removal";
-import type { RemovalResult, RemovalProgress, MattingMode, EditorState } from "@/lib/types";
+import type { RemovalResult, RemovalProgress, MattingMode, EditorState, UsageInfo } from "@/lib/types";
 import {
   Download,
   RotateCcw,
   Upload,
   ArrowLeft,
   Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function EditorPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [state, setState] = useState<EditorState>("upload");
   const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [originalUrl, setOriginalUrl] = useState<string | null>(null);
@@ -38,7 +41,16 @@ export default function EditorPage() {
   const [finalPreviewUrl, setFinalPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mattingMode, setMattingMode] = useState<MattingMode>("portrait");
+  const [usage, setUsage] = useState<UsageInfo | null>(null);
   const bgFileInputRef = useRef<HTMLInputElement>(null);
+
+  // 获取额度信息
+  useEffect(() => {
+    fetch("/api/usage")
+      .then((res) => res.json())
+      .then((data) => setUsage(data.usage))
+      .catch(console.error);
+  }, [session]);
 
   // Check for image from session storage (from homepage upload)
   useEffect(() => {
@@ -69,6 +81,12 @@ export default function EditorPage() {
 
   const handleFileSelected = useCallback(
     async (file: File) => {
+      // 额度检查
+      if (usage && usage.remaining <= 0) {
+        setError("Daily quota exceeded. Please upgrade your plan or try again tomorrow.");
+        return;
+      }
+
       setError(null);
       setOriginalFile(file);
       const url = URL.createObjectURL(file);
@@ -78,6 +96,20 @@ export default function EditorPage() {
       setFinalPreviewUrl(null);
 
       try {
+        // 消耗额度
+        const usageRes = await fetch("/api/usage", { method: "POST" });
+        const usageData = await usageRes.json();
+
+        if (usageRes.status === 429) {
+          setError("Daily quota exceeded. Please upgrade your plan or try again tomorrow.");
+          setState("upload");
+          return;
+        }
+
+        if (usageData.usage) {
+          setUsage(usageData.usage);
+        }
+
         const removalResult = await removeImageBackground(
           file,
           setProgress,
@@ -94,7 +126,7 @@ export default function EditorPage() {
         setState("upload");
       }
     },
-    [mattingMode]
+    [mattingMode, usage]
   );
 
   // When background color changes, generate preview
@@ -187,9 +219,40 @@ export default function EditorPage() {
 
             <UploadZone onFileSelected={handleFileSelected} />
 
+            {/* 额度显示 */}
+            {usage && (
+              <div className="mt-6 flex items-center gap-2 text-sm text-muted">
+                <span>
+                  Today: {usage.todayUsed}/{usage.dailyLimit} images used
+                </span>
+                {usage.remaining <= 5 && usage.remaining > 0 && (
+                  <span className="flex items-center gap-1 text-yellow-600">
+                    <AlertTriangle className="h-4 w-4" />
+                    {usage.remaining} left
+                  </span>
+                )}
+                {usage.remaining <= 0 && (
+                  <button
+                    onClick={() => router.push("/pricing")}
+                    className="ml-2 text-primary hover:underline font-medium"
+                  >
+                    Upgrade Plan →
+                  </button>
+                )}
+              </div>
+            )}
+
             {error && (
               <div className="mt-4 rounded-lg bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-600 dark:text-red-400 text-center max-w-md fade-in">
                 {error}
+                {error.includes("quota") && (
+                  <button
+                    onClick={() => router.push("/pricing")}
+                    className="ml-2 underline font-medium"
+                  >
+                    Upgrade Plan
+                  </button>
+                )}
               </div>
             )}
           </div>

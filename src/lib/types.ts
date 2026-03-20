@@ -1,3 +1,5 @@
+import type { PlanType } from "./plans";
+
 /** 抠图模式 */
 export type MattingMode = "portrait" | "goods" | "general";
 
@@ -32,4 +34,32 @@ export interface PresetColor {
   name: string;
   value: string;
   class: string;
+}
+
+/** 用户档案 */
+export interface UserProfile {
+  id: string;              // Google OAuth sub ID
+  email: string;
+  name: string;
+  image: string;
+  createdAt: string;       // ISO 日期
+
+  // 订阅信息
+  plan: PlanType;
+  planExpiresAt: string | null;   // 订阅到期时间
+  paypalSubscriptionId: string | null;
+
+  // 使用统计
+  totalProcessed: number;  // 总处理图片数
+  todayProcessed: number;  // 今日处理数
+  todayDate: string;       // 用于每日重置计数
+}
+
+/** 用户使用额度信息 */
+export interface UsageInfo {
+  plan: PlanType;
+  dailyLimit: number;
+  todayUsed: number;
+  remaining: number;
+  totalProcessed: number;
 }
